@@ -1,0 +1,6 @@
+bodyRequired: 
+    type: object
+    attributes:
+        username:
+            type: string
+            required: true
