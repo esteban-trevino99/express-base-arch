@@ -4,7 +4,7 @@ import validateJsonJoi from '../modules/json-joi'
 import { NextFunction, Request, Response } from 'express';
 import { Route } from '../types/router.types';
 import { ApiError } from '../types/general.types';
-import { BadRequest, Unauthorized } from '../utils/errors'
+import { BadRequest, Unauthorized, NotFound } from '../utils/errors'
 
 export default class Router {
     private app: any;
@@ -17,7 +17,7 @@ export default class Router {
     async init() {
         const routeFiles = fs.readdirSync(path.resolve('src/routes'));
         this.routes = (await Promise.all(routeFiles.map(this.readRouteFile)))?.flat() || [];
-        this.addMiddelwares(() => {
+        this.addMiddleware(() => {
             this.routes.forEach((route) => this.addRoute(route));
         });
     }
@@ -36,25 +36,33 @@ export default class Router {
 
     private getHandlerFromString = async (handlerString: string, nodeHandlers: { req: Request, res: Response, next: NextFunction }) => {
         const [controllerName, methodName] = handlerString.split('.');
-        const { req, res, next } = nodeHandlers;
+        const { req, res } = nodeHandlers;
         try {
             const controllerModule = await import(`../controllers/${controllerName}`);
 
             const controller = new controllerModule["default"](req, res);
 
             if (methodName && controller[methodName] && typeof controller[methodName] === 'function') {
-                res.send(controller[methodName]());
+                const result = await controller[methodName]();
+                res.send(result);
             }
         } catch (error) {
             const tsError = error as ApiError;
-            res.status(tsError.code || 500).json(tsError)
-            next()
+            res.status(tsError.code || 500).json({
+                message: tsError.message,
+                key: tsError.key,
+                data: tsError.data
+            })
+            res.send();
         }
     };
 
-    private addMiddelwares(callback: Function) {
+    private addMiddleware(callback: Function) {
         this.app.use(async (req: Request, res: Response, next: NextFunction) => {
             const currentPath = this.routes.find((route) => route.path == req.originalUrl);
+            if (!currentPath)
+                throw new NotFound("not_found", `${req.originalUrl} does not exist`)
+
             Promise.all([
                 this.checkAuth(currentPath as Route, req),
                 this.checkBody(currentPath as Route, req)
@@ -62,7 +70,6 @@ export default class Router {
                 callback();
                 next();
             }).catch(error => {
-                console.log(error)
                 res.status(error.code || 500).send(error)
             })
         })
@@ -78,21 +85,24 @@ export default class Router {
     }
 
     private async checkBody(route: Route, req: Request) {
-        const checkEmptyBody = (body: any) => {
-            if (!body) return true;
-            if (Array.isArray(body) && !body.length) return true;
-            if (typeof body === 'object' && !Object.keys(body).length) return true;
-            return false;
+        console.log(`${route.method.toUpperCase()} ${route.path}`)
+        if (route.options.bodyRequired) {
+            const checkEmptyBody = (body: any) => {
+                if (!body) return true;
+                if (Array.isArray(body) && !body.length) return true;
+                if (typeof body === 'object' && !Object.keys(body).length) return true;
+                return false;
+            }
+            const body = req.body;
+            if (checkEmptyBody(body) && route.options.bodyRequired) {
+                throw new BadRequest("BAD_REQUEST", "Body required", { bodyRequired: route.options.bodyRequired });
+            }
+            const joi = validateJsonJoi(body, route.options.bodyRequired)
+            if (!joi.check) {
+                throw new BadRequest("BAD_REQUEST", "Wrong payload", { error: joi.error })
+            }
+            return route
         }
-        const body = req.body;
-        if (checkEmptyBody(body) && route.options.bodyRequired) {
-            throw new BadRequest("BAD_REQUEST", "Body required", { bodyRequired: route.options.bodyRequired });
-        }
-        const joi = validateJsonJoi(body, route.options.bodyRequired)
-        if (!joi.check) {
-            throw new BadRequest("BAD_REQUEST", "Wrong payload", { error: joi.error })
-        }
-        return route
     }
 
 }

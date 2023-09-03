@@ -59,3 +59,10 @@ export class InternalServer extends ApiError {
         super(code, key, message)
     }
 }
+
+export class NotFound extends ApiError {
+    constructor(key: string, message: string, data?: any) {
+        const code = 404;
+        super(code, key, message)
+    }
+}

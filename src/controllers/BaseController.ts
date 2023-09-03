@@ -1,10 +1,10 @@
-import { RequestHandler, Response } from "express";
+import { Request, Response } from "express";
 
 export default class BaseController {
-    req: RequestHandler;
+    req: Request & { body: any };
     res: Response
-    constructor(req: RequestHandler, res: Response){
-        this.req = req; 
+    constructor(req: Request & { body: any }, res: Response) {
+        this.req = req;
         this.res = res;
     }
 }

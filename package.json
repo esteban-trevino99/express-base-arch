@@ -4,10 +4,10 @@
   "description": "Base project architecture and config for Express",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest ./src",
     "dev": "npx nodemon",
     "start": "tsc -p . && ts-node dist/index.js",
-    "env:dev": "npx run-func ./env/copy-env.js exportEnv local"
+    "env:dev": "cp ./env/.local.env ./ && mv .local.env .env"
   },
   "repository": {
     "type": "git",
@@ -20,19 +20,26 @@
   },
   "homepage": "https://github.com/esteban-trevino99/express-base-arch#readme",
   "devDependencies": {
+    "@types/bcrypt": "^5.0.0",
     "@types/express": "^4.17.17",
+    "@types/jest": "^29.5.3",
     "@types/joi": "^17.2.3",
+    "@types/jsonwebtoken": "^9.0.2",
     "@types/mysql": "^2.15.21",
     "@types/node": "^20.4.5",
+    "jest": "^29.6.2",
     "nodemon": "^3.0.1",
+    "ts-jest": "^29.1.1",
     "ts-node": "^10.9.1",
     "typescript": "^5.1.6"
   },
   "dependencies": {
+    "bcrypt": "^5.1.1",
     "body-parser": "^1.20.2",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "joi": "^17.9.2",
+    "jsonwebtoken": "^9.0.1",
     "mysql": "^2.18.1"
   }
 }
